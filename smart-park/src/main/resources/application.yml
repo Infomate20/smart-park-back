@@ -1,0 +1,51 @@
+spring.application.name: smart-park
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smartparkdb
+    username: postgres
+    password: Infomate
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+logging:
+  level:
+   smartPark:
+     smart_park:
+       security: DEBUG
+   root: INFO
+   com:
+     SmartPark.smart_park: INFO
+     zaxxer:
+       hikari: ERROR
+   org:
+     springframework:
+       web: DEBUG
+       security: DEBUG
+     hibernate:
+       SQL: DEBUG
+       type:
+         descriptor:
+           sql:
+             BasicBinder: TRACE
+       boot:
+         web:
+           embedded:
+             tomcat: INFO
+jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 3600000
+  refresh-token:
+    expiration: 86400000
+
+
