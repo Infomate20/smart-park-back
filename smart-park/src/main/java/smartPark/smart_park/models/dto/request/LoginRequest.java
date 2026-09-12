@@ -13,8 +13,8 @@ import lombok.NoArgsConstructor;
 public class LoginRequest {
 
     @NotBlank(message = "Le nom d'utilisateur est requis")
-    private String nomUtilisateur;
+    private String identifier;
 
     @NotBlank(message = "Le mot de passe est requis")
-    private String motDePasse;
+    private String password;
 }

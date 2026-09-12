@@ -38,6 +38,12 @@ public class CategorieServiceImpl implements CategorieService {
             throw new BusinessException("Une catégorie avec ce nom existe déjà");
         }
 
+        // Vérifier l'unicité du code (comparé sous sa forme normalisée)
+        String codeNormalise = categorieMapper.normaliserCode(requestDto.getCode());
+        if (categorieRepository.findByCode(codeNormalise).isPresent()) {
+            throw new BusinessException("Une catégorie avec le code " + codeNormalise + " existe déjà");
+        }
+
         Categorie categorie = categorieMapper.toEntity(requestDto);
         Categorie categorieEnregistree = categorieRepository.save(categorie);
 
@@ -104,6 +110,14 @@ public class CategorieServiceImpl implements CategorieService {
         // Vérifier l'unicité du nom (exclure la catégorie actuelle)
         if (categorieRepository.existsByNomAndIdNot(requestDto.getNom(), id)) {
             throw new BusinessException("Une autre catégorie avec ce nom existe déjà");
+        }
+
+        // Idem pour le code, uniquement s'il est fourni (mise à jour partielle)
+        if (requestDto.getCode() != null) {
+            String codeNormalise = categorieMapper.normaliserCode(requestDto.getCode());
+            if (categorieRepository.existsByCodeAndIdNot(codeNormalise, id)) {
+                throw new BusinessException("Une autre catégorie avec le code " + codeNormalise + " existe déjà");
+            }
         }
 
         categorieMapper.updateEntityFromDto(requestDto, categorie);

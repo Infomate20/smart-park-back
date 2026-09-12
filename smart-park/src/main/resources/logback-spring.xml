@@ -1,0 +1,24 @@
+<!-- Fichier : src/main/resources/logback-spring.xml -->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/base.xml"/>
+
+    <!-- Appender pour le log d'entraînement de l'IA -->
+    <appender name="AI_TRAINING_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/ai-training.jsonl</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Fichiers archivés quotidiennement -->
+            <fileNamePattern>logs/ai-training-%d{yyyy-MM-dd}.jsonl.zip</fileNamePattern>
+            <maxHistory>30</maxHistory> <!-- Garde 30 jours de logs -->
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <!-- Ne formate que le message, sans date/niveau de log etc. -->
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Logger dédié pour capturer les interactions IA -->
+    <logger name="AiTrainingLogger" level="INFO" additivity="false">
+        <appender-ref ref="AI_TRAINING_LOG"/>
+    </logger>
+
+</configuration>

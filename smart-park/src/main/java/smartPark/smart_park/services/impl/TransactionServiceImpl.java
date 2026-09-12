@@ -1,5 +1,8 @@
 package smartPark.smart_park.services.impl;
 
+import smartPark.smart_park.exceptions.BusinessException;
+import smartPark.smart_park.exceptions.ForbiddenException;
+import smartPark.smart_park.exceptions.ValidationException;
 
 
 import lombok.RequiredArgsConstructor;
@@ -61,7 +64,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         // Vérifier qu'il n'y a pas déjà une transaction en attente pour cette immobilisation
         if (transactionRepository.hasTransactionsEnAttenteForImmobilisation(requestDto.getImmobilisationId())) {
-            throw new IllegalStateException("Une transaction est déjà en attente pour cette immobilisation");
+            throw new BusinessException("Une transaction est déjà en attente pour cette immobilisation");
         }
 
         Transaction transaction = transactionMapper.toEntity(requestDto);
@@ -84,10 +87,10 @@ public class TransactionServiceImpl implements TransactionService {
             case TRANSFERT:
                 // Pour un transfert, agence source et destination sont obligatoires
                 if (requestDto.getAgenceSourceId() == null || requestDto.getAgenceDestinationId() == null) {
-                    throw new IllegalArgumentException("Pour un transfert, les agences source et destination sont obligatoires");
+                    throw new ValidationException("Pour un transfert, les agences source et destination sont obligatoires");
                 }
                 if (requestDto.getAgenceSourceId().equals(requestDto.getAgenceDestinationId())) {
-                    throw new IllegalArgumentException("Les agences source et destination doivent être différentes");
+                    throw new ValidationException("Les agences source et destination doivent être différentes");
                 }
 
                 Agence agenceSource = agenceRepository.findById(requestDto.getAgenceSourceId())
@@ -102,7 +105,7 @@ public class TransactionServiceImpl implements TransactionService {
             case AFFECTATION:
                 // Pour une affectation, seule l'agence destination est obligatoire
                 if (requestDto.getAgenceDestinationId() == null) {
-                    throw new IllegalArgumentException("Pour une affectation, l'agence destination est obligatoire");
+                    throw new ValidationException("Pour une affectation, l'agence destination est obligatoire");
                 }
 
                 Agence agenceDest = agenceRepository.findById(requestDto.getAgenceDestinationId())
@@ -120,7 +123,7 @@ public class TransactionServiceImpl implements TransactionService {
             case DESAFFECTATION:
                 // Pour une désaffectation, seule l'agence source est nécessaire
                 if (requestDto.getAgenceSourceId() == null) {
-                    throw new IllegalArgumentException("Pour une désaffectation, l'agence source est obligatoire");
+                    throw new ValidationException("Pour une désaffectation, l'agence source est obligatoire");
                 }
 
                 Agence agenceSrc2 = agenceRepository.findById(requestDto.getAgenceSourceId())
@@ -170,7 +173,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         // Vérifier que la transaction est en attente
         if (!transaction.peutEtreValidee()) {
-            throw new IllegalStateException("Seules les transactions en attente peuvent être modifiées");
+            throw new BusinessException("Seules les transactions en attente peuvent être modifiées");
         }
 
         // Vérifier les nouvelles relations si elles sont modifiées
@@ -215,7 +218,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         // Vérifier que la transaction peut être supprimée (par exemple, seulement si en attente)
         if (!transaction.estEnAttente()) {
-            throw new IllegalStateException("Seules les transactions en attente peuvent être supprimées");
+            throw new BusinessException("Seules les transactions en attente peuvent être supprimées");
         }
 
         transactionRepository.deleteById(id);
@@ -231,7 +234,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         // Vérifier que la transaction peut être validée
         if (!transaction.peutEtreValidee()) {
-            throw new IllegalStateException("Cette transaction ne peut pas être validée (état actuel: " + transaction.getEtatTransaction() + ")");
+            throw new BusinessException("Cette transaction ne peut pas être validée (état actuel: " + transaction.getEtatTransaction() + ")");
         }
 
         // Vérifier que le validateur existe et a les droits
@@ -239,7 +242,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Validateur non trouvé avec l'ID: " + validationDto.getValidateurId()));
 
         if (!validateur.getRole().equals(Role.ADMIN)) {
-            throw new IllegalArgumentException("Seuls les administrateurs peuvent valider des transactions");
+            throw new ForbiddenException("Seuls les administrateurs peuvent valider des transactions");
         }
 
         // Appliquer la décision
@@ -459,7 +462,7 @@ public class TransactionServiceImpl implements TransactionService {
         log.info("Récupération des transactions entre {} et {}", dateDebut, dateFin);
 
         if (dateDebut.isAfter(dateFin)) {
-            throw new IllegalArgumentException("La date de début doit être antérieure à la date de fin");
+            throw new ValidationException("La date de début doit être antérieure à la date de fin");
         }
 
         List<Transaction> transactions = transactionRepository.findByDateDemandeBetween(dateDebut, dateFin);
@@ -472,7 +475,7 @@ public class TransactionServiceImpl implements TransactionService {
         log.info("Récupération des transactions validées entre {} et {}", dateDebut, dateFin);
 
         if (dateDebut.isAfter(dateFin)) {
-            throw new IllegalArgumentException("La date de début doit être antérieure à la date de fin");
+            throw new ValidationException("La date de début doit être antérieure à la date de fin");
         }
 
         List<Transaction> transactions = transactionRepository.findByDateValidationBetween(dateDebut, dateFin);
@@ -514,7 +517,7 @@ public class TransactionServiceImpl implements TransactionService {
         log.info("Recherche de transactions avec critères multiples");
 
         if (dateDebut != null && dateFin != null && dateDebut.isAfter(dateFin)) {
-            throw new IllegalArgumentException("La date de début doit être antérieure à la date de fin");
+            throw new ValidationException("La date de début doit être antérieure à la date de fin");
         }
 
         Page<Transaction> transactions = transactionRepository.findWithCriteria(
@@ -581,7 +584,7 @@ public class TransactionServiceImpl implements TransactionService {
 
             // Vérifier que la transaction peut être annulée
             if (!transaction.estEnAttente()) {
-                throw new IllegalStateException("Seules les transactions en attente peuvent être annulées");
+                throw new BusinessException("Seules les transactions en attente peuvent être annulées");
             }
 
             // Vérifier les droits (seul le demandeur ou un admin peut annuler)
@@ -589,7 +592,7 @@ public class TransactionServiceImpl implements TransactionService {
                     .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + utilisateurId));
 
             if (!utilisateur.getRole().equals(Role.ADMIN) && !transaction.getDemandeur().getId().equals(utilisateurId)) {
-                throw new IllegalArgumentException("Seul le demandeur ou un administrateur peut annuler cette transaction");
+                throw new ForbiddenException("Seul le demandeur ou un administrateur peut annuler cette transaction");
             }
 
             // Marquer comme rejetée avec un motif d'annulation

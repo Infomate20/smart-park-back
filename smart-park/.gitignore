@@ -31,3 +31,16 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets locaux ###
+# Les secrets vivent dans .env, jamais dans le dépôt.
+# Voir .env.example pour la liste des variables attendues.
+.env
+.env.*
+!.env.example
+application-local.yml
+./graphify-out/
+.claude/
+.idea/
+.docs/
+CLAUDE.md

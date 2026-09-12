@@ -22,6 +22,28 @@ public class CodeGenerationServiceImpl implements CodeGenerationService {
     private static final String PREFIXE_SANS_AGENCE = "STOCK";
     @Autowired
     private static final String SEPARATEUR = "-";
+    private static final String PREFIXE_CATEGORIE_INCONNUE = "BIEN";
+
+    @Override
+    public String genererCodeImmobilisation(String numeroSerie, Long agenceId, String codeCategorie) {
+        // Un bien sans numéro de série constructeur est identifié par sa catégorie
+        // et un horodatage ; l'appelant applique ensuite garantirUniciteCode().
+        if (numeroSerie == null || numeroSerie.trim().isEmpty()) {
+            String discriminant = String.format("%s%s%s",
+                    normaliserCodeCategorie(codeCategorie),
+                    SEPARATEUR,
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+
+            String codeGenere = (agenceId == null)
+                    ? String.format("%s%s%s", PREFIXE_SANS_AGENCE, SEPARATEUR, discriminant)
+                    : String.format("%s%s%s", obtenirPrefixeAgence(agenceId), SEPARATEUR, discriminant);
+
+            log.info("Code d'immobilisation généré sans numéro de série: {}", codeGenere);
+            return codeGenere;
+        }
+
+        return genererCodeImmobilisation(numeroSerie, agenceId);
+    }
 
     @Override
     public String genererCodeImmobilisation(String numeroSerie, Long agenceId) {
@@ -33,6 +55,13 @@ public class CodeGenerationServiceImpl implements CodeGenerationService {
 
         String prefixeAgence = obtenirPrefixeAgence(agenceId);
         return genererCodeImmobilisationAvecAgence(numeroSerie, prefixeAgence);
+    }
+
+    private String normaliserCodeCategorie(String codeCategorie) {
+        if (codeCategorie == null || codeCategorie.trim().isEmpty()) {
+            return PREFIXE_CATEGORIE_INCONNUE;
+        }
+        return codeCategorie.trim().toUpperCase();
     }
 
     @Override

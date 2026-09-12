@@ -1,0 +1,14 @@
+# 1. Image Java légère (runtime uniquement)
+FROM eclipse-temurin:17-jre
+  
+  # 2. Dossier de travail dans le conteneur
+WORKDIR /app
+  
+  # 3. Copier le JAR généré par Maven
+COPY target/*.jar app.jar
+  
+  # 4. Port utilisé par Spring Boot
+EXPOSE 8080
+  
+  # 5. Commande de démarrage
+ENTRYPOINT ["java", "-jar", "app.jar"]

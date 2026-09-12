@@ -77,9 +77,8 @@ public class InterventionMapper {
         // Informations du technicien
         if (intervention.getTechnicien() != null) {
             dto.setTechnicienId(intervention.getTechnicien().getId());
-            dto.setNomUtilisateur(intervention.getTechnicien().getNomUtilisateur());
            // dto.setTechnicienNomUtilisateur(intervention.getTechnicien().getNomUtilisateur());
-            dto.setTechnicienPrenom(intervention.getTechnicien().getPrenom());
+            dto.setTechnicienNom(intervention.getTechnicien().getPrenom());
             dto.setTechnicienEmail(intervention.getTechnicien().getEmail());
         }
 

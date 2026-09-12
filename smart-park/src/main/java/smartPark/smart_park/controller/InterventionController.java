@@ -32,7 +32,6 @@ import java.util.List;
 @RequestMapping("/api/interventions")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin( origins="*")
 @Tag(name = "Interventions", description = "API de gestion des interventions")
 public class InterventionController {
      @Autowired

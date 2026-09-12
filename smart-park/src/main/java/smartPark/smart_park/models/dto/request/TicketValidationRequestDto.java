@@ -12,4 +12,5 @@ public class TicketValidationRequestDto {
 
     private String motifRejet;
     private String observations; // Champ supplémentaire du contrôleur
+    private boolean creerIntervention;
 }

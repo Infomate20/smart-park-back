@@ -3,7 +3,11 @@ package smartPark.smart_park.services;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import smartPark.smart_park.models.dto.request.ImmobilisationRequestDto;
+import smartPark.smart_park.models.dto.request.InterventionRequestDto;
+import smartPark.smart_park.models.dto.response.ImmobilisationLightDto;
 import smartPark.smart_park.models.dto.response.ImmobilisationResponseDto;
+import smartPark.smart_park.models.dto.response.InterventionResponseDto;
+import smartPark.smart_park.models.dto.response.TransactionResponseDto;
 import smartPark.smart_park.models.entity.enums.EtatImmobilisation;
 
 import java.math.BigDecimal;
@@ -21,6 +25,8 @@ public interface ImmobilisationService {
     List<ImmobilisationResponseDto> obtenirToutesLesImmobilisations();
 
     List<ImmobilisationResponseDto> obtenirImmobilisationsActives();
+
+    List<ImmobilisationResponseDto>searchActiveByTerm(String term);
 
     Page<ImmobilisationResponseDto> obtenirImmobilisationsAvecPagination(Pageable pageable);
 
@@ -60,4 +66,15 @@ public interface ImmobilisationService {
     Long compterImmobilisationsParAgence(Long agenceId);
 
     Long compterImmobilisationsParEtat(EtatImmobilisation etat);
+
+    List<InterventionResponseDto> findInterventionsByImmobilisationId(Long immobilisationId);
+    List<TransactionResponseDto> findTransactionsByImmobilisationId(Long immobilisationId);
+
+    // Contrôles de disponibilité (saisie de formulaire) : résolus par une requête
+    // d'existence, jamais en parcourant le parc
+    boolean numeroSerieDisponible(String numeroSerie, Long excludeId);
+
+    boolean codeImmobilisationDisponible(String codeImmobilisation, Long excludeId);
+
+
 }

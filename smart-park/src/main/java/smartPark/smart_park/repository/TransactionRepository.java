@@ -118,4 +118,17 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     // Vérifier si une immobilisation a des transactions en attente
     @Query("SELECT COUNT(t) > 0 FROM Transaction t WHERE t.immobilisation.id = :immobilisationId AND t.etatTransaction = 'EN_ATTENTE'")
     boolean hasTransactionsEnAttenteForImmobilisation(@Param("immobilisationId") Long immobilisationId);
+
+    @Query("SELECT t FROM Transaction t WHERE t.dateDemande BETWEEN :dateDebut AND :dateFin")
+    List<Transaction> findAllByDateDemandeBetween(
+            @Param("dateDebut") LocalDateTime dateDebut,
+            @Param("dateFin") LocalDateTime dateFin);
+
+    /**
+     * Trouve toutes les transactions pour un ID d'immobilisation donné,
+     * triées par date de demande la plus récente en premier.
+     * @param immobilisationId L'ID de l'immobilisation.
+     * @return Une liste d'entités Transaction.
+     */
+    List<Transaction> findAllByImmobilisationIdOrderByDateDemandeDesc(Long immobilisationId);
 }

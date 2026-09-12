@@ -26,7 +26,12 @@ public class Immobilisation {
     @Column(name = "code_immobilisation", nullable = false, unique = true, length = 50)
     private String codeImmobilisation;
 
-    @Column(name = "numero_serie", nullable = false, length = 100)
+    /**
+     * Numéro de série constructeur. Absent pour les biens qui n'en portent pas
+     * (mobilier, agencement) : ces biens restent identifiés individuellement par
+     * leur {@code codeImmobilisation}, qui est alors dérivé du code de catégorie.
+     */
+    @Column(name = "numero_serie", length = 100)
     private String numeroSerie;
     @Column(nullable = false, length = 200)
     private String designation;

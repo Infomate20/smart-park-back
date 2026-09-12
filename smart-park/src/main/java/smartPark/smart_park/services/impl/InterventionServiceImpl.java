@@ -1,5 +1,7 @@
 package smartPark.smart_park.services.impl;
 
+import smartPark.smart_park.exceptions.BusinessException;
+import smartPark.smart_park.exceptions.ValidationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import smartPark.smart_park.models.dto.request.InterventionRequestDto;
 import smartPark.smart_park.models.dto.request.InterventionUpdateDto;
@@ -54,7 +56,7 @@ public class InterventionServiceImpl implements InterventionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Technicien non trouvé avec l'ID: " + requestDto.getTechnicienId()));
 
         if (!technicien.getRole().equals(Role.TECHNICIEN) && !technicien.getRole().equals(Role.ADMIN)) {
-            throw new IllegalArgumentException("L'utilisateur doit avoir le rôle TECHNICIEN ou ADMIN pour effectuer une intervention");
+            throw new BusinessException("L'utilisateur doit avoir le rôle TECHNICIEN ou ADMIN pour effectuer une intervention");
         }
 
         Intervention intervention = interventionMapper.toEntity(requestDto);
@@ -122,7 +124,7 @@ public class InterventionServiceImpl implements InterventionService {
                     .orElseThrow(() -> new ResourceNotFoundException("Technicien non trouvé avec l'ID: " + updateDto.getTechnicienId()));
 
             if (!technicien.getRole().equals(Role.TECHNICIEN) && !technicien.getRole().equals(Role.ADMIN)) {
-                throw new IllegalArgumentException("L'utilisateur doit avoir le rôle TECHNICIEN ou ADMIN");
+                throw new BusinessException("L'utilisateur doit avoir le rôle TECHNICIEN ou ADMIN");
             }
             intervention.setTechnicien(technicien);
         }
@@ -223,7 +225,7 @@ public class InterventionServiceImpl implements InterventionService {
         log.info("Récupération des interventions entre {} et {}", dateDebut, dateFin);
 
         if (dateDebut.isAfter(dateFin)) {
-            throw new IllegalArgumentException("La date de début doit être antérieure à la date de fin");
+            throw new ValidationException("La date de début doit être antérieure à la date de fin");
         }
 
         List<Intervention> interventions = interventionRepository.findByDateInterventionBetween(dateDebut, dateFin);
@@ -261,7 +263,7 @@ public class InterventionServiceImpl implements InterventionService {
         log.info("Recherche d'interventions avec critères multiples");
 
         if (dateDebut != null && dateFin != null && dateDebut.isAfter(dateFin)) {
-            throw new IllegalArgumentException("La date de début doit être antérieure à la date de fin");
+            throw new ValidationException("La date de début doit être antérieure à la date de fin");
         }
 
         Page<Intervention> interventions = interventionRepository.findWithCriteria(
@@ -312,7 +314,7 @@ public class InterventionServiceImpl implements InterventionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Intervention non trouvée"));
 
         if (intervention.getEtatIntervention() != EtatIntervention.PLANIFIER) {
-            throw new IllegalStateException("L'intervention ne peut pas être commencée car elle n'est pas planifiée.");
+            throw new BusinessException("L'intervention ne peut pas être commencée car elle n'est pas planifiée.");
         }
 
         intervention.setEtatIntervention(EtatIntervention.EN_COURS);
@@ -327,7 +329,7 @@ public class InterventionServiceImpl implements InterventionService {
 
         // Logique métier : on ne peut terminer qu'une intervention en cours
         if (intervention.getEtatIntervention() != EtatIntervention.EN_COURS) {
-            throw new IllegalStateException("L'intervention ne peut pas être terminée car elle n'est pas en cours.");
+            throw new BusinessException("L'intervention ne peut pas être terminée car elle n'est pas en cours.");
         }
 
         intervention.setEtatIntervention(EtatIntervention.TERMINER);

@@ -114,4 +114,22 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
 
     @Query("SELECT u FROM Utilisateur u WHERE u.derniereConnexion < :dateLimit AND u.actif = true")
     List<Utilisateur> findUtilisateursInactifsSince(@Param("dateLimit") LocalDateTime dateLimit);
+
+    /**
+     * Compte le nombre d'utilisateurs ayant un rôle spécifique.
+     * @param role Le rôle à compter.
+     * @return Le nombre d'utilisateurs.
+     */
+    long countByRole(Role role);
+
+    /**
+     * Recherche un utilisateur soit par son nom d'utilisateur, soit par son email,
+     * soit par son numéro de téléphone.
+     * @param nomUtilisateur Le nom d'utilisateur à rechercher.
+     * @param email L'email à rechercher.
+     * @param telephone Le numéro de téléphone à rechercher.
+     * @return Un Optional contenant l'entité Utilisateur si elle est trouvée par l'un des trois critères.
+     */
+    Optional<Utilisateur> findByNomUtilisateurOrEmailOrTelephone(String nomUtilisateur, String email, String telephone);
+
 }

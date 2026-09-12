@@ -3,14 +3,15 @@ package smartPark.smart_park.services;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import smartPark.smart_park.models.dto.request.ChangementMotDePasseRequestDto;
-import smartPark.smart_park.models.dto.request.ConnexionRequestDto;
 import smartPark.smart_park.models.dto.request.UtilisateurRequestDto;
 import smartPark.smart_park.models.dto.response.UtilisateurResponseDto;
+import smartPark.smart_park.models.entity.Utilisateur;
 import smartPark.smart_park.models.entity.enums.Role;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public interface UtilisateurService {
 
@@ -18,6 +19,8 @@ public interface UtilisateurService {
     UtilisateurResponseDto creerUtilisateur(UtilisateurRequestDto requestDto);
 
     UtilisateurResponseDto obtenirUtilisateurParId(Long id);
+
+    Optional<Utilisateur> findInfoUser(String nomUtilisateur);
 
     UtilisateurResponseDto obtenirUtilisateurParNomUtilisateur(String nomUtilisateur);
 
@@ -59,8 +62,6 @@ public interface UtilisateurService {
     void marquerMotDePasseExpire(Long id);
 
     // Gestion de la connexion
-    UtilisateurResponseDto authentifier(ConnexionRequestDto requestDto);
-
     void enregistrerConnexion(Long id);
 
     void incrementerTentativesEchouees(Long id);

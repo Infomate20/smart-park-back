@@ -2,9 +2,10 @@ package smartPark.smart_park.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -59,10 +60,22 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * Origines autorisées, configurables par {@code CORS_ALLOWED_ORIGINS}
+     * (liste séparée par des virgules). Cette configuration est la seule
+     * autorité en matière de CORS : aucun contrôleur ne doit porter de
+     * {@code @CrossOrigin}, sous peine de rétablir les divergences que cette
+     * centralisation corrige.
+     */
+    @Value("${app.cors.allowed-origins:http://localhost:4200}")
+    private List<String> allowedOrigins;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:4200")); //
+        // allowCredentials(true) interdit la valeur '*' : les origines doivent
+        // être énumérées explicitement.
+        config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         config.setAllowCredentials(true);
@@ -77,18 +90,37 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(authz -> authz
-                        // Endpoints publics
+                        // ---------------------------------------------------------------
+                        // 1. API : le seul point d'entrée public est l'authentification.
+                        //    L'ordre est significatif — les règles /api/** doivent être
+                        //    déclarées AVANT la règle des routes SPA plus bas, sans quoi
+                        //    l'API redeviendrait accessible sans authentification.
+                        // ---------------------------------------------------------------
                         .requestMatchers("/api/auth/**").permitAll()
-
-                        .requestMatchers(HttpMethod.POST,"/api/utilisateurs/create").permitAll()
-
                         // Endpoints pour ADMIN seulement
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-
                         // Endpoints pour ADMIN et TECHNICIEN
                         .requestMatchers("/api/tech/**").hasAnyRole("ADMIN", "TECHNICIEN")
+                        // Tout le reste de l'API exige un jeton valide. Le contrôle fin
+                        // des rôles est assuré par @PreAuthorize sur les contrôleurs.
+                        .requestMatchers("/api/**").authenticated()
 
-                        // Tous les autres endpoints nécessitent une authentification
+                        // ---------------------------------------------------------------
+                        // 2. Ressources statiques du SPA Angular
+                        // ---------------------------------------------------------------
+                        .requestMatchers("/", "/index.html", "/favicon.ico").permitAll()
+                        .requestMatchers("/*.js", "/*.css", "/*.png", "/*.jpg", "/*.svg", "/*.ico").permitAll()
+                        .requestMatchers("/media/**", "/assets/**").permitAll()
+                        .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
+
+                        // ---------------------------------------------------------------
+                        // 3. Routes Angular : un chemin sans extension est une route du
+                        //    SPA, renvoyée vers index.html par SpaFallbackController.
+                        //    Les chemins /api/** ont déjà été traités au-dessus.
+                        // ---------------------------------------------------------------
+                        .requestMatchers(request -> !request.getRequestURI().contains(".")).permitAll()
+
+                        // Tous les autres endpoints necessitate une authentification
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exception -> exception

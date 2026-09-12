@@ -14,8 +14,11 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class ImmobilisationRequestDto {
 
-    @NotBlank(message = "Le numéro de série est obligatoire")
-    @Size(min = 1, max = 100, message = "Le numéro de série doit contenir entre 1 et 100 caractères")
+    /**
+     * Optionnel : les biens sans numéro de série constructeur (mobilier,
+     * agencement) reçoivent un code d'immobilisation dérivé de leur catégorie.
+     */
+    @Size(max = 100, message = "Le numéro de série ne peut pas dépasser 100 caractères")
     private String numeroSerie;
 
     @NotBlank(message = "La désignation est obligatoire")

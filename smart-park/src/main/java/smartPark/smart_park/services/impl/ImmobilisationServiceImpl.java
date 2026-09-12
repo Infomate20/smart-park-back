@@ -4,25 +4,35 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import smartPark.smart_park.exceptions.BusinessException;
 import smartPark.smart_park.exceptions.ResourceNotFoundException;
 import smartPark.smart_park.mapper.ImmobilisationMapper;
+import smartPark.smart_park.mapper.InterventionMapper;
+import smartPark.smart_park.mapper.TransactionMapper;
 import smartPark.smart_park.models.dto.request.ImmobilisationRequestDto;
+import smartPark.smart_park.models.dto.response.ImmobilisationLightDto;
 import smartPark.smart_park.models.dto.response.ImmobilisationResponseDto;
+import smartPark.smart_park.models.dto.response.InterventionResponseDto;
+import smartPark.smart_park.models.dto.response.TransactionResponseDto;
 import smartPark.smart_park.models.entity.Agence;
 import smartPark.smart_park.models.entity.Immobilisation;
 import smartPark.smart_park.models.entity.enums.EtatImmobilisation;
 import smartPark.smart_park.repository.AgenceRepository;
+import smartPark.smart_park.repository.DetailVehiculeRepository;
 import smartPark.smart_park.repository.ImmobilisationRepository;
+import smartPark.smart_park.repository.InterventionRepository;
+import smartPark.smart_park.repository.TransactionRepository;
 import smartPark.smart_park.services.CodeGenerationService;
 import smartPark.smart_park.services.ImmobilisationService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,25 +47,32 @@ public class ImmobilisationServiceImpl implements ImmobilisationService {
     private final ImmobilisationMapper immobilisationMapper;
     @Autowired
     private final CodeGenerationService codeGenerationService;
+    @Autowired
+    private final InterventionRepository interventionRepository;
+    @Autowired
+    private final TransactionRepository transactionRepository;
+    @Autowired
+    private final InterventionMapper interventionMapper;
+    @Autowired
+    private final TransactionMapper transactionMapper;
+    private final DetailVehiculeRepository detailVehiculeRepository;
 
     @Override
     public ImmobilisationResponseDto creerImmobilisation(ImmobilisationRequestDto requestDto) {
         log.info("Création d'une nouvelle immobilisation avec numéro série: {}", requestDto.getNumeroSerie());
 
-        // Vérifier l'unicité du numéro de série
-        if (immobilisationRepository.existsByNumeroSerie(requestDto.getNumeroSerie())) {
+        // Vérifier l'unicité du numéro de série, uniquement s'il est renseigné :
+        // les biens sans numéro de série constructeur (mobilier) sont distingués
+        // par leur code d'immobilisation
+        if (estRenseigne(requestDto.getNumeroSerie())
+                && immobilisationRepository.existsByNumeroSerie(requestDto.getNumeroSerie())) {
             throw new BusinessException("Une immobilisation avec ce numéro de série existe déjà");
         }
-        // Générer et vérifier l'unicité du code d'immobilisation
-        String codeGenere = codeGenerationService.genererCodeImmobilisation(
-                requestDto.getNumeroSerie(),
-                requestDto.getAgenceId()
-        );
 
-        // Si le code existe déjà, ajouter un suffixe numérique
-        String codeUnique = garantirUniciteCode(codeGenere);
-
+        // Le mapper génère déjà le code (il connaît la catégorie résolue) ;
+        // on se contente d'en garantir l'unicité
         Immobilisation immobilisation = immobilisationMapper.toEntity(requestDto);
+        String codeUnique = garantirUniciteCode(immobilisation.getCodeImmobilisation());
         immobilisation.setCodeImmobilisation(codeUnique);
 
         Immobilisation immobilisationEnregistree = immobilisationRepository.save(immobilisation);
@@ -210,7 +227,7 @@ public class ImmobilisationServiceImpl implements ImmobilisationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Immobilisation non trouvée avec l'ID: " + id));
 
         // Vérifier l'unicité du numéro de série (exclure l'immobilisation actuelle)
-        if (requestDto.getNumeroSerie() != null &&
+        if (estRenseigne(requestDto.getNumeroSerie()) &&
                 immobilisationRepository.existsByNumeroSerieAndIdNot(requestDto.getNumeroSerie(), id)) {
             throw new BusinessException("Une autre immobilisation avec ce numéro de série existe déjà");
         }
@@ -242,6 +259,9 @@ public class ImmobilisationServiceImpl implements ImmobilisationService {
                 (immobilisation.getTransactions() != null && !immobilisation.getTransactions().isEmpty())) {
             throw new BusinessException("Impossible de supprimer cette immobilisation car elle a des interventions ou transactions associées");
         }
+
+        // Le satellite véhicule porte la clé étrangère : il doit partir en premier
+        detailVehiculeRepository.deleteByImmobilisationId(id);
 
         immobilisationRepository.delete(immobilisation);
         log.info("Immobilisation supprimée avec succès avec l'ID: {}", id);
@@ -311,7 +331,8 @@ public class ImmobilisationServiceImpl implements ImmobilisationService {
         // Régénérer le code d'immobilisation avec la nouvelle agence
         String nouveauCode = codeGenerationService.genererCodeImmobilisation(
                 immobilisation.getNumeroSerie(),
-                agenceId
+                agenceId,
+                codeCategorie(immobilisation)
         );
         String codeUnique = garantirUniciteCode(nouveauCode);
         immobilisation.setCodeImmobilisation(codeUnique);
@@ -336,7 +357,11 @@ public class ImmobilisationServiceImpl implements ImmobilisationService {
         immobilisation.setAgence(null);
 
         // Régénérer le code d'immobilisation sans agence
-        String nouveauCode = codeGenerationService.genererCodeImmobilisationSansAgence(immobilisation.getNumeroSerie());
+        String nouveauCode = codeGenerationService.genererCodeImmobilisation(
+                immobilisation.getNumeroSerie(),
+                null,
+                codeCategorie(immobilisation)
+        );
         String codeUnique = garantirUniciteCode(nouveauCode);
         immobilisation.setCodeImmobilisation(codeUnique);
 
@@ -370,6 +395,38 @@ public class ImmobilisationServiceImpl implements ImmobilisationService {
     }
 
     // ===== MÉTHODES PRIVÉES UTILITAIRES =====
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean numeroSerieDisponible(String numeroSerie, Long excludeId) {
+        if (!estRenseigne(numeroSerie)) {
+            // Un bien non sérialisé n'entre jamais en collision
+            return true;
+        }
+        return excludeId != null
+                ? !immobilisationRepository.existsByNumeroSerieAndIdNot(numeroSerie, excludeId)
+                : !immobilisationRepository.existsByNumeroSerie(numeroSerie);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean codeImmobilisationDisponible(String codeImmobilisation, Long excludeId) {
+        if (!estRenseigne(codeImmobilisation)) {
+            return false;
+        }
+        return excludeId != null
+                ? !immobilisationRepository.existsByCodeImmobilisationAndIdNot(codeImmobilisation, excludeId)
+                : !immobilisationRepository.existsByCodeImmobilisation(codeImmobilisation);
+    }
+
+    /** Un numéro de série vide équivaut à un numéro absent (bien non sérialisé). */
+    private boolean estRenseigne(String numeroSerie) {
+        return numeroSerie != null && !numeroSerie.trim().isEmpty();
+    }
+
+    private String codeCategorie(Immobilisation immobilisation) {
+        return immobilisation.getCategorie() != null ? immobilisation.getCategorie().getCode() : null;
+    }
 
     private String garantirUniciteCode(String codeBase) {
         String codeUnique = codeBase;
@@ -421,4 +478,41 @@ public class ImmobilisationServiceImpl implements ImmobilisationService {
                 throw new BusinessException("État d'immobilisation non reconnu: " + etatActuel);
         }
     }
+
+    @Override
+    public List<ImmobilisationResponseDto> searchActiveByTerm(String term) {
+        Pageable limit= PageRequest.of(0,10);
+        List<Immobilisation> immobilisations= immobilisationRepository.searchActiveByTerm(term, limit);
+        return immobilisationMapper.toResponseDtoList(immobilisations);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InterventionResponseDto> findInterventionsByImmobilisationId(Long immobilisationId) {
+        log.info("Récupération de l'historique des interventions pour l'immobilisation ID: {}", immobilisationId);
+        // On vérifie d'abord que l'immobilisation existe
+        if (!immobilisationRepository.existsById(immobilisationId)) {
+            throw new ResourceNotFoundException("Immobilisation non trouvée avec l'ID: " + immobilisationId);
+        }
+
+        return interventionRepository.findAllByImmobilisationIdOrderByDateInterventionDesc(immobilisationId)
+                .stream()
+                .map(interventionMapper::toResponseDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDto> findTransactionsByImmobilisationId(Long immobilisationId) {
+        log.info("Récupération de l'historique des transactions pour l'immobilisation ID: {}", immobilisationId);
+        if (!immobilisationRepository.existsById(immobilisationId)) {
+            throw new ResourceNotFoundException("Immobilisation non trouvée avec l'ID: " + immobilisationId);
+        }
+
+        return transactionRepository.findAllByImmobilisationIdOrderByDateDemandeDesc(immobilisationId)
+                .stream()
+                .map(transactionMapper::toResponseDto)
+                .collect(Collectors.toList());
+    }
+
 }

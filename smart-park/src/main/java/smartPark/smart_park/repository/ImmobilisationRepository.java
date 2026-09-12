@@ -93,4 +93,9 @@ public interface ImmobilisationRepository extends JpaRepository<Immobilisation, 
             @Param("actif") Boolean actif,
             Pageable pageable
     );
+
+    @Query("SELECT i FROM Immobilisation i where i.actif=true AND ("+
+    " LOWER(i.designation) LIKE LOWER(CONCAT('%', :term, '%')) OR"+
+    " LOWER(i.codeImmobilisation) LIKE LOWER(CONCAT('%', :term, '%')))")
+    List<Immobilisation> searchActiveByTerm(@Param("term") String term, Pageable pageable);
 }

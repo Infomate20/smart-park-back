@@ -29,10 +29,20 @@ public class TransactionRequestDto {
     @NotNull(message = "L'ID de l'immobilisation est obligatoire")
     private Long immobilisationId;
 
-    @NotNull(message="l'agence source est obligatoire")
+    /**
+     * Agences source et destination : leur caractère obligatoire dépend du type
+     * de transaction, elles ne portent donc pas de {@code @NotNull} ici.
+     *
+     * <p>C'est {@code TransactionServiceImpl.validerAgencesSelonType} qui fait
+     * autorité, avec un message adapté au type :
+     * <ul>
+     *   <li>TRANSFERT : les deux sont exigées, et doivent être différentes ;</li>
+     *   <li>AFFECTATION : seule la destination est exigée ;</li>
+     *   <li>DESAFFECTATION : seule la source est exigée.</li>
+     * </ul>
+     */
     private Long agenceSourceId;
 
-    @NotNull(message=" l'agence de destination est obligatoire")
     private Long agenceDestinationId;
 
     @NotNull(message = "L'ID du demandeur est obligatoire")

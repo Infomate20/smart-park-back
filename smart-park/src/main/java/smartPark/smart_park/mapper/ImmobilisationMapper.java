@@ -45,12 +45,8 @@ public class ImmobilisationMapper {
         immobilisation.setDureeGarantieMois(requestDto.getDureeGarantieMois());
         immobilisation.setObservations(requestDto.getObservations());
         immobilisation.setActif(requestDto.getActif() != null ? requestDto.getActif() : true);
-        String codeGenere = codeGenerationService.genererCodeImmobilisation(
-                requestDto.getNumeroSerie(),
-                requestDto.getAgenceId()
-        );
-        immobilisation.setCodeImmobilisation(codeGenere);
-        // Relations
+        // Relations : résolues avant la génération du code, qui s'appuie sur le
+        // code de catégorie lorsque le bien n'a pas de numéro de série
         if (requestDto.getCategorieId() != null) {
             Categorie categorie = categorieRepository.findById(requestDto.getCategorieId())
                     .orElseThrow(() -> new ResourceNotFoundException("Catégorie non trouvée avec l'ID: " + requestDto.getCategorieId()));
@@ -61,6 +57,12 @@ public class ImmobilisationMapper {
                     .orElseThrow(() -> new ResourceNotFoundException("Agence non trouvée avec l'ID: " + requestDto.getAgenceId()));
             immobilisation.setAgence(agence);
         }
+        String codeGenere = codeGenerationService.genererCodeImmobilisation(
+                requestDto.getNumeroSerie(),
+                requestDto.getAgenceId(),
+                codeCategorie(immobilisation)
+        );
+        immobilisation.setCodeImmobilisation(codeGenere);
         return immobilisation;
     }
     public ImmobilisationResponseDto toResponseDto(Immobilisation immobilisation) {
@@ -183,10 +185,16 @@ public class ImmobilisationMapper {
         if (regenererCode) {
             String codeGenere = codeGenerationService.genererCodeImmobilisation(
                     immobilisation.getNumeroSerie(),
-                    requestDto.getAgenceId()
+                    requestDto.getAgenceId(),
+                    codeCategorie(immobilisation)
             );
             immobilisation.setCodeImmobilisation(codeGenere);
         }
+    }
+
+    /** Code de la catégorie du bien, ou {@code null} si elle n'est pas encore résolue. */
+    private String codeCategorie(Immobilisation immobilisation) {
+        return immobilisation.getCategorie() != null ? immobilisation.getCategorie().getCode() : null;
     }
     private Boolean calculerSousGarantie(Immobilisation immobilisation) {
         if (immobilisation.getDateMiseEnService() == null || immobilisation.getDureeGarantieMois() == null) {

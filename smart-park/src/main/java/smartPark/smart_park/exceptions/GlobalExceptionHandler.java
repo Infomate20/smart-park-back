@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 //import org.springframework.web.ErrorResponse;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -156,6 +157,27 @@ public class GlobalExceptionHandler{
                 .status(HttpStatus.FORBIDDEN.value())
                 .error("Forbidden")
                 .message(ex.getMessage())
+                .path(request.getDescription(false).replace("uri=", ""))
+                .timestamp(java.time.LocalDateTime.now())
+                .build();
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * Refus émis par @PreAuthorize. Sans ce handler, l'exception serait interceptée
+     * par le handler générique Exception.class plus bas et renverrait une 500.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+            AccessDeniedException ex, WebRequest request) {
+
+        log.warn("Access denied: {}", ex.getMessage());
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .error("Forbidden")
+                .message("Vous ne disposez pas des droits nécessaires pour effectuer cette action.")
                 .path(request.getDescription(false).replace("uri=", ""))
                 .timestamp(java.time.LocalDateTime.now())
                 .build();

@@ -10,10 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import smartPark.smart_park.exceptions.BusinessException;
 import smartPark.smart_park.exceptions.ResourceNotFoundException;
-import smartPark.smart_park.exceptions.UnauthorizedException;
 import smartPark.smart_park.mapper.UtilisateurMapper;
 import smartPark.smart_park.models.dto.request.ChangementMotDePasseRequestDto;
-import smartPark.smart_park.models.dto.request.ConnexionRequestDto;
 import smartPark.smart_park.models.dto.request.UtilisateurRequestDto;
 import smartPark.smart_park.models.dto.response.UtilisateurResponseDto;
 import smartPark.smart_park.models.entity.Agence;
@@ -27,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -98,6 +97,14 @@ public class UtilisateurServiceImpl implements UtilisateurService {
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec le nom d'utilisateur: " + nomUtilisateur));
 
         return utilisateurMapper.toResponseDto(utilisateur);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Utilisateur> findInfoUser(String nomUtilisateur) {
+        log.info("Recherche de l'utilisateur avec le nom d'utilisateur: {}", nomUtilisateur);
+
+        return utilisateurRepository.findByNomUtilisateur(nomUtilisateur);
     }
 
     @Override
@@ -324,39 +331,6 @@ public class UtilisateurServiceImpl implements UtilisateurService {
         utilisateurRepository.save(utilisateur);
 
         log.info("Mot de passe marqué comme expiré pour l'utilisateur: {}", id);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public UtilisateurResponseDto authentifier(ConnexionRequestDto requestDto) {
-        log.info("Tentative d'authentification pour: {}", requestDto.getNomUtilisateur());
-
-        Utilisateur utilisateur = utilisateurRepository.findByNomUtilisateur(requestDto.getNomUtilisateur().toLowerCase())
-                .orElseThrow(() -> new UnauthorizedException("Nom d'utilisateur ou mot de passe incorrect"));
-
-        // Vérifier si le compte est actif
-        if (!utilisateur.getActif()) {
-            throw new UnauthorizedException("Compte désactivé");
-        }
-
-        // Vérifier si le compte est verrouillé
-        if (utilisateur.getCompteVerrouille()) {
-            throw new UnauthorizedException("Compte verrouillé");
-        }
-
-        // Vérifier le mot de passe
-        if (!passwordEncoder.matches(requestDto.getMotDePasse(), utilisateur.getMotDePasse())) {
-            // Incrémenter les tentatives échouées
-            incrementerTentativesEchouees(utilisateur.getId());
-            throw new UnauthorizedException("Nom d'utilisateur ou mot de passe incorrect");
-        }
-
-        // Authentification réussie
-        resetTentativesEchouees(utilisateur.getId());
-        enregistrerConnexion(utilisateur.getId());
-
-        log.info("Authentification réussie pour: {}", requestDto.getNomUtilisateur());
-        return utilisateurMapper.toResponseDto(utilisateur);
     }
 
     @Override

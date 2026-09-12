@@ -74,4 +74,12 @@ public interface InterventionRepository extends JpaRepository<Intervention, Long
 //            @Param("serachterm") String searchTerm,
 //            @Param("etatIntervention")EtatIntervention etatIntervention
 //            );
+
+    /**
+     * Trouve toutes les interventions pour un ID d'immobilisation donné,
+     * triées par date d'intervention la plus récente en premier.
+     * @param immobilisationId L'ID de l'immobilisation.
+     * @return Une liste d'entités Intervention.
+     */
+    List<Intervention> findAllByImmobilisationIdOrderByDateInterventionDesc(Long immobilisationId);
 }

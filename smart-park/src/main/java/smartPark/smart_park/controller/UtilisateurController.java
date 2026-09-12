@@ -8,9 +8,9 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import smartPark.smart_park.models.dto.request.ChangementMotDePasseRequestDto;
-import smartPark.smart_park.models.dto.request.ConnexionRequestDto;
 import smartPark.smart_park.models.dto.request.UtilisateurRequestDto;
 import smartPark.smart_park.models.dto.response.UtilisateurResponseDto;
 import smartPark.smart_park.models.entity.enums.Role;
@@ -20,10 +20,16 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * La gestion des comptes est réservée à l'ADMIN par défaut : l'annotation de classe
+ * ci-dessous s'applique à toutes les méthodes, y compris celles ajoutées plus tard.
+ * Les quelques endpoints ouverts plus largement portent leur propre @PreAuthorize,
+ * qui prend le pas sur celle de la classe.
+ */
 @RestController
 @RequestMapping("/api/utilisateurs")
 @RequiredArgsConstructor
-//@CrossOrigin(origins = "http://localhost:4200")
+@PreAuthorize("hasRole('ADMIN')")
 public class UtilisateurController {
 
     private final UtilisateurService utilisateurService;
@@ -37,6 +43,7 @@ public class UtilisateurController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.utilisateur.id")
     public ResponseEntity<UtilisateurResponseDto> obtenirUtilisateurParId(@PathVariable Long id) {
         UtilisateurResponseDto utilisateur = utilisateurService.obtenirUtilisateurParId(id);
         return ResponseEntity.ok(utilisateur);
@@ -174,6 +181,7 @@ public class UtilisateurController {
     }
 
     @PutMapping("/{id}/marquer-premiere-connexion-terminee")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.utilisateur.id")
     public ResponseEntity<Void> marquerPremiereConnexionTerminee(@PathVariable Long id) {
         utilisateurService.marquerPremiereConnexionTerminee(id);
         return ResponseEntity.ok().build();
@@ -181,7 +189,10 @@ public class UtilisateurController {
 
     // ===== ENDPOINTS DE GESTION DES MOTS DE PASSE =====
 
+    // Chacun peut changer son propre mot de passe ; l'ancien mot de passe est
+    // vérifié par le service. Le reset sans ancien mot de passe reste ADMIN.
     @PutMapping("/{id}/changer-mot-de-passe")
+    @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal.utilisateur.id")
     public ResponseEntity<Void> changerMotDePasse(
             @PathVariable Long id,
             @Valid @RequestBody ChangementMotDePasseRequestDto requestDto) {
@@ -197,35 +208,7 @@ public class UtilisateurController {
         return ResponseEntity.ok().build();
     }
 
-    // ===== ENDPOINTS D'AUTHENTIFICATION =====
-
-    @PostMapping("/authentifier")
-    public ResponseEntity<UtilisateurResponseDto> authentifier(@Valid @RequestBody ConnexionRequestDto requestDto) {
-        UtilisateurResponseDto utilisateur = utilisateurService.authentifier(requestDto);
-        return ResponseEntity.ok(utilisateur);
-    }
-
-    @PostMapping("/connexion")
-    public ResponseEntity<Map<String, Object>> connexion(@Valid @RequestBody ConnexionRequestDto requestDto) {
-        try {
-            UtilisateurResponseDto utilisateur = utilisateurService.authentifier(requestDto);
-
-            Map<String, Object> response = Map.of(
-                    "success", true,
-                    "utilisateur", utilisateur,
-                    "message", "Connexion réussie"
-            );
-
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            Map<String, Object> response = Map.of(
-                    "success", false,
-                    "message", e.getMessage()
-            );
-
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
-    }
+    // L'authentification se fait exclusivement via /api/auth (login + OTP).
 
     // ===== ENDPOINTS DE GESTION DES AGENCES =====
 
@@ -310,11 +293,13 @@ public class UtilisateurController {
     // ===== ENDPOINTS UTILITAIRES =====
 
     @GetMapping("/roles")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Role[]> obtenirTousLesRoles() {
         return ResponseEntity.ok(Role.values());
     }
 
     @GetMapping("/roles-avec-libelles")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<Role, String>> obtenirRolesAvecLibelles() {
         Map<Role, String> rolesAvecLibelles = Map.of(
                 Role.ADMIN, Role.ADMIN.getLibelle(),

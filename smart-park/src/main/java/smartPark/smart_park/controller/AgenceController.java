@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import smartPark.smart_park.models.dto.request.AgenceRequestDto;
 import smartPark.smart_park.models.dto.response.AgenceResponseDto;
@@ -18,7 +19,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/agences")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AgenceController {
 
     private final AgenceService agenceService;
@@ -26,42 +26,49 @@ public class AgenceController {
     // ===== ENDPOINTS CRUD DE BASE =====
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AgenceResponseDto> creerAgence(@Valid @RequestBody AgenceRequestDto requestDto) {
         AgenceResponseDto agence = agenceService.creerAgence(requestDto);
         return new ResponseEntity<>(agence, HttpStatus.CREATED);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AgenceResponseDto> obtenirAgenceParId(@PathVariable Long id) {
         AgenceResponseDto agence = agenceService.obtenirAgenceParId(id);
         return ResponseEntity.ok(agence);
     }
 
     @GetMapping("/code/{code}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AgenceResponseDto> obtenirAgenceParCode(@PathVariable String code) {
         AgenceResponseDto agence = agenceService.obtenirAgenceParCode(code);
         return ResponseEntity.ok(agence);
     }
 
     @GetMapping("/nom/{nom}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<AgenceResponseDto> obtenirAgenceParNom(@PathVariable String nom) {
         AgenceResponseDto agence = agenceService.obtenirAgenceParNom(nom);
         return ResponseEntity.ok(agence);
     }
 
     @GetMapping
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AgenceResponseDto>> obtenirToutesLesAgences() {
         List<AgenceResponseDto> agences = agenceService.obtenirToutesLesAgences();
         return ResponseEntity.ok(agences);
     }
 
     @GetMapping("/actives")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AgenceResponseDto>> obtenirAgencesActives() {
         List<AgenceResponseDto> agences = agenceService.obtenirAgencesActives();
         return ResponseEntity.ok(agences);
     }
 
     @GetMapping("/paginated")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<AgenceResponseDto>> obtenirAgencesAvecPagination(
             @RequestParam(required = false) String searchTerm,
             @RequestParam(required = false) Boolean actif,
@@ -71,6 +78,7 @@ public class AgenceController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AgenceResponseDto> modifierAgence(
             @PathVariable Long id,
             @Valid @RequestBody AgenceRequestDto requestDto) {
@@ -79,6 +87,7 @@ public class AgenceController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> supprimerAgence(@PathVariable Long id) {
         agenceService.supprimerAgence(id);
         return ResponseEntity.noContent().build();
@@ -87,6 +96,7 @@ public class AgenceController {
     // ===== ENDPOINTS DE RECHERCHE =====
 
     @GetMapping("/search")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<AgenceResponseDto>> rechercherAgences(
             @RequestParam String searchTerm,
             @PageableDefault(size = 10) Pageable pageable) {
@@ -95,18 +105,21 @@ public class AgenceController {
     }
 
     @GetMapping("/ville/{ville}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AgenceResponseDto>> obtenirAgencesParVille(@PathVariable String ville) {
         List<AgenceResponseDto> agences = agenceService.obtenirAgencesParVille(ville);
         return ResponseEntity.ok(agences);
     }
 
     @GetMapping("/pays/{pays}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AgenceResponseDto>> obtenirAgencesParPays(@PathVariable String pays) {
         List<AgenceResponseDto> agences = agenceService.obtenirAgencesParPays(pays);
         return ResponseEntity.ok(agences);
     }
 
     @GetMapping("/ville/{ville}/paginated")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<AgenceResponseDto>> obtenirAgencesParVilleAvecPagination(
             @PathVariable String ville,
             @PageableDefault(size = 10) Pageable pageable) {
@@ -115,6 +128,7 @@ public class AgenceController {
     }
 
     @GetMapping("/pays/{pays}/paginated")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<AgenceResponseDto>> obtenirAgencesParPaysAvecPagination(
             @PathVariable String pays,
             @PageableDefault(size = 10) Pageable pageable) {
@@ -125,12 +139,14 @@ public class AgenceController {
     // ===== ENDPOINTS DE GESTION D'ÉTAT =====
 
     @PutMapping("/{id}/desactiver")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> desactiverAgence(@PathVariable Long id) {
         agenceService.desactiverAgence(id);
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}/activer")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> activerAgence(@PathVariable Long id) {
         agenceService.activerAgence(id);
         return ResponseEntity.ok().build();
@@ -139,6 +155,7 @@ public class AgenceController {
     // ===== ENDPOINTS DE VALIDATION =====
 
     @GetMapping("/validate/code")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Boolean>> validerUniciteCode(
             @RequestParam String code,
             @RequestParam(required = false) Long excludeId) {
@@ -147,6 +164,7 @@ public class AgenceController {
     }
 
     @GetMapping("/validate/nom")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Boolean>> validerUniciteNom(
             @RequestParam String nom,
             @RequestParam(required = false) Long excludeId) {
@@ -155,6 +173,7 @@ public class AgenceController {
     }
 
     @GetMapping("/validate/email")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Boolean>> validerUniciteEmail(
             @RequestParam String email,
             @RequestParam(required = false) Long excludeId) {
@@ -163,6 +182,7 @@ public class AgenceController {
     }
 
     @GetMapping("/{id}/peut-supprimer")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Boolean>> verifierPossibiliteSuppression(@PathVariable Long id) {
         boolean peutSupprimer = agenceService.peutSupprimerAgence(id);
         return ResponseEntity.ok(Map.of("canDelete", peutSupprimer));
@@ -171,24 +191,28 @@ public class AgenceController {
     // ===== ENDPOINTS DE STATISTIQUES =====
 
     @GetMapping("/{id}/stats")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Long>> obtenirStatistiquesAgence(@PathVariable Long id) {
         Map<String, Long> statistiques = agenceService.obtenirStatistiquesAgence(id);
         return ResponseEntity.ok(statistiques);
     }
 
     @GetMapping("/stats/immobilisations/{id}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Long>> compterImmobilisationsParAgence(@PathVariable Long id) {
         Long count = agenceService.compterImmobilisationsParAgence(id);
         return ResponseEntity.ok(Map.of("nombreImmobilisations", count));
     }
 
     @GetMapping("/stats/utilisateurs/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Long>> compterUtilisateursParAgence(@PathVariable Long id) {
         Long count = agenceService.compterUtilisateursParAgence(id);
         return ResponseEntity.ok(Map.of("nombreUtilisateurs", count));
     }
 
     @GetMapping("/stats/dashboard")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> obtenirStatistiquesGenerales() {
         Map<String, Object> statistiques = agenceService.obtenirStatistiquesGenerales();
         return ResponseEntity.ok(statistiques);
@@ -197,12 +221,14 @@ public class AgenceController {
     // ===== ENDPOINTS UTILITAIRES =====
 
     @GetMapping("/villes")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<String>> obtenirVillesDisponibles() {
         List<String> villes = agenceService.obtenirVillesDisponibles();
         return ResponseEntity.ok(villes);
     }
 
     @GetMapping("/pays")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<String>> obtenirPaysDisponibles() {
         List<String> pays = agenceService.obtenirPaysDisponibles();
         return ResponseEntity.ok(pays);
@@ -211,6 +237,7 @@ public class AgenceController {
     // ===== ENDPOINTS D'INFORMATION =====
 
     @GetMapping("/info/total")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Long>> obtenirNombreTotalAgences() {
         List<AgenceResponseDto> agences = agenceService.obtenirToutesLesAgences();
         List<AgenceResponseDto> agencesActives = agenceService.obtenirAgencesActives();
@@ -225,6 +252,7 @@ public class AgenceController {
     }
 
     @GetMapping("/export/csv")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> exporterAgencesCSV() {
         List<AgenceResponseDto> agences = agenceService.obtenirToutesLesAgences();
 
@@ -252,6 +280,7 @@ public class AgenceController {
     // ===== ENDPOINTS DE GESTION EN LOT =====
 
     @PutMapping("/batch/activer")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> activerPlusieursAgences(@RequestBody List<Long> ids) {
         int activees = 0;
         int erreurs = 0;
@@ -275,6 +304,7 @@ public class AgenceController {
     }
 
     @PutMapping("/batch/desactiver")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> desactiverPlusieursAgences(@RequestBody List<Long> ids) {
         int desactivees = 0;
         int erreurs = 0;
@@ -300,6 +330,7 @@ public class AgenceController {
     // ===== ENDPOINTS DE RECHERCHE AVANCÉE =====
 
     @PostMapping("/search/advanced")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<AgenceResponseDto>> rechercheAvancee(
             @RequestBody Map<String, Object> criteria,
             @PageableDefault(size = 10) Pageable pageable) {
@@ -316,6 +347,7 @@ public class AgenceController {
     }
 
     @GetMapping("/rapport/resume")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> obtenirRapportResume() {
         Map<String, Object> statistiques = agenceService.obtenirStatistiquesGenerales();
         List<AgenceResponseDto> agencesActives = agenceService.obtenirAgencesActives();

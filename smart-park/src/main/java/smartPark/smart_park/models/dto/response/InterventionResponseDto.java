@@ -34,8 +34,7 @@ public class InterventionResponseDto {
 
     // Informations du technicien
     private Long technicienId;
-    private String nomUtilisateur;
-    private String technicienPrenom;
+    private String technicienNom;
     private String technicienEmail;
 
     // Informations de l'agence
